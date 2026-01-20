@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.services.setmore_client import SetmoreClient
 from app.services.slot_tracker import SlotTracker
+from app.services.notification_service import NotificationService  # NEW
 from app.models.database import SessionLocal
 from app.config import settings
 
@@ -26,6 +27,7 @@ class PollingService:
         db = SessionLocal()
         try:
             tracker = SlotTracker(db)
+            notifier = NotificationService(db)  # NEW
             new_slots_found = {}
             
             # Poll for next N days
@@ -43,9 +45,11 @@ class PollingService:
                     # Save snapshot
                     tracker.save_snapshot(date_str, current_slots)
                     
-                    # Track new slots found
+                    # If new slots found, notify subscribers
                     if new_slots:
                         new_slots_found[date_str] = new_slots
+                        sent_count = notifier.notify_new_slots(date_str, new_slots)  # NEW
+                        print(f"📱 Sent {sent_count} notifications for {date_str}")
                     
                 except Exception as e:
                     print(f"❌ Error polling {date_str}: {e}")
@@ -59,7 +63,6 @@ class PollingService:
                 print(f"\n🎉 FOUND NEW SLOTS:")
                 for date, slots in new_slots_found.items():
                     print(f"   {date}: {slots}")
-                print(f"\n📱 TODO: Notify {self._get_subscriber_count(db)} subscribers")
             else:
                 print(f"\n✅ No new slots detected")
             
@@ -71,7 +74,7 @@ class PollingService:
             db.close()
     
     def _get_subscriber_count(self, db: Session) -> int:
-        """Get count of active subscribers (we'll implement subscriptions later)"""
+        """Get count of active subscribers"""
         from app.models.models import Subscription
         return db.query(Subscription).filter(Subscription.is_active == True).count()
 

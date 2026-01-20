@@ -13,5 +13,10 @@ class Settings:
     # App config
     POLL_INTERVAL_MINUTES = int(os.getenv("POLL_INTERVAL_MINUTES", 60))
     DAYS_TO_POLL = int(os.getenv("DAYS_TO_POLL", 7))
+    
+    # Twilio
+    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+    TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 settings = Settings()

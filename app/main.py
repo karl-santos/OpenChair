@@ -7,6 +7,8 @@ from app.services.setmore_client import SetmoreClient
 from app.services.slot_tracker import SlotTracker
 from app.services.scheduler import scheduler
 from app.models.database import get_db
+from app.api.subscriptions import router as subscriptions_router 
+from app.services.notification_service import NotificationService
 
 
 @asynccontextmanager
@@ -32,7 +34,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Include routers
+app.include_router(subscriptions_router)  # NEW
+
 setmore = SetmoreClient()
+
+
 
 
 @app.get("/")
@@ -60,11 +67,37 @@ async def trigger_poll():
     """
     Admin endpoint - trigger a poll immediately (for testing)
     """
-    scheduler.run_now()
+    from app.services.polling_service import polling_service
+    await polling_service.poll_for_new_slots()  # Call async directly
     return {
-        "message": "Poll triggered",
+        "message": "Poll completed",
         "status": "check logs for results"
     }
+
+@app.post("/admin/test-sms")
+async def test_sms(
+    phone_number: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Admin endpoint - send test SMS
+    
+    Example: /admin/test-sms?phone_number=+12345678900
+    """
+    notifier = NotificationService(db)
+    success = notifier.send_test_notification(phone_number)
+    
+    if success:
+        return {
+            "message": "Test SMS sent!",
+            "phone_number": phone_number
+        }
+    else:
+        return {
+            "message": "Failed to send SMS - check Twilio config",
+            "phone_number": phone_number
+        }
+
 
 
 @app.get("/test/slots")
